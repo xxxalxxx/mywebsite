@@ -1,0 +1,123 @@
+body
+{
+    padding:0px;
+    margin:0px;
+}
+
+img
+{
+    max-width: 95%;
+    max-height:600px;
+    vertical-align:top;
+    padding:5px;
+    margin:auto;
+    background-color:gray;
+}
+
+h2
+{
+    padding:10px;
+    font-weight:100;
+}
+
+header
+{
+    position:fixed;
+    background-color:white;
+    width:100%;
+    text-align:center;
+    z-index:1;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+
+header div 
+{
+    display:inline-block;
+    width:50%;
+}
+
+.header-wrapper
+{
+    background-color:blue;
+    width:70%;
+}
+
+.header-item div
+{
+   padding-top:25px;
+   padding-bottom:25px;
+   font-size:25px;
+}
+
+.wrapper
+{
+    padding-top:70px;
+}
+
+
+
+.menu
+{
+    margin:5px;
+    position:fixed;
+    display:inline-block;
+    padding:20px;
+
+    margin-top:70px;
+    margin-left:86%;
+
+
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+
+}
+
+.content
+{
+    position:relative;
+    background-color:white;
+    margin-left:15%;
+    margin-right:15%;
+}
+
+
+.php h2 
+{
+    background-color:MediumPurple;
+    color:white;
+}
+
+.javascript h2 
+{
+    background-color:Orange;
+
+
+}
+
+.android_java h2 
+{
+     background-color:limegreen;
+     color:white;
+}
+
+.android_ndk h2 
+{
+     background-color:#00BCD4;
+     color:white;
+}
+
+.web
+{
+    background-color:MediumPurple;
+    color:white;
+}
+
+.android
+{
+     background-color:limegreen;
+     color:white;
+}
+
+#jsMath_button
+{
+    display:none;
+}
