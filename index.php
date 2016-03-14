@@ -123,24 +123,30 @@ class ProjectManager
                     echo '<p><a name="' . $name . '"><h2>' . $name . '</h2></a></p>';
                 }
 
-                if(!empty($technologies) )
-                {
-                    echo "<p><h3>Технологии: </h3>$technologies</p>";
-                }
+                echo '<div class="references">';
 
                 if(!empty($demo_url) )
                 {
-                    echo '<p><a href="' . $demo_url . '">Демо</a></p>';
+                    echo '<a href="' . $demo_url . '"><div><img class="icon" src="res/demo_link.png"><span>Демо</span></div></a>';
+                   // echo '<p><a href="' . $demo_url . '">Демо</a></p>';
                 }
 
                 if(!empty($play_market_url) )
                 {
-                    echo '<p><a href="' . $play_market_url . '">Play Market</a></p>';
+                    echo '<a href="' . $play_market_url . '"><div><img class="icon" src="res/google_play_icon.png"><span>Google Play</span></div></a>';
                 }
 
                 if(!empty($github_url) )
                 {
-                    echo '<p><a href="' . $github_url . '">GitHub</a></p>';
+                    echo '<a href="' . $github_url . '"><div><img class="icon" src="res/github_logo.png"><span>GitHub</span></div></a>';
+                    //echo '<p><a href="' . $github_url . '">GitHub</a></p>';
+                }
+
+                echo '</div>';
+
+                if(!empty($technologies) )
+                {
+                    echo "<p><h3>Технологии: </h3>$technologies</p>";
                 }
 
                 if(!empty($description_url) )
@@ -157,7 +163,6 @@ class ProjectManager
         }
     }
 };
-
 $pm = new ProjectManager();
 $clickId = 0;
 ?>
@@ -203,7 +208,11 @@ $clickId = 0;
 </body>
 
 <footer>
-    
+    <div class="footer-wrapper">
+       <div><img class="icon" src="res/phone_icon.png"><span>093-544-22-46</span></div>
+       <div><img class="icon" src="res/email_icon.png"><span>a.melnichuk@yahoo.com</span></div>
+       <div><img class="icon" src="res/skype_icon.png"><span>melnichuk.al</span></div>
+    </div>
 </footer>
 <script>
 $( document ).ready(function() 
@@ -229,7 +238,7 @@ $( document ).ready(function()
     {
         e.preventDefault();
         
-        var target = $(this).attr("href")
+        let target = $(this).attr("href")
         target = target.substring(1,target.length);
         $(window).scrollTop($('a[name="'+target+'"]').offset().top - 89); 
         return false; 
