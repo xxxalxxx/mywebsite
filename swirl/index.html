@@ -1,0 +1,391 @@
+<!doctype html>
+<html>
+   <body>
+		<script id="vert" type="x-shader/x-vertex">
+		attribute vec2 a_texCoord;
+		attribute vec3 a_position;
+
+		varying vec2 v_texCoord;
+
+ 		void main() {
+			gl_Position = vec4(a_position, 1.0);
+			v_texCoord = a_texCoord;
+
+		}
+		</script>
+
+
+		<script id="frag" type="x-shader/x-fragment">
+		precision mediump float;
+
+		uniform sampler2D u_image;
+
+		varying vec2 v_texCoord;
+
+		void main() {
+		   gl_FragColor = texture2D(u_image, v_texCoord);
+		}
+		</script>
+
+		<script id="vertSwirl" type="x-shader/x-vertex">
+		attribute vec2 a_texCoord;
+		attribute vec3 a_position;
+
+		uniform vec2 u_offset;
+		uniform vec2 u_center;
+		uniform float u_aspect;
+
+		varying vec2 v_texCoord;
+		varying vec3 v_pos;
+		varying vec2 v_center;
+		varying vec2 v_offset;
+		 
+		void main() {
+			v_pos = a_position;
+			v_pos.x *= u_aspect;
+			v_pos.xy += u_offset;
+			v_offset = u_offset;
+
+
+			gl_Position = vec4(v_pos, 1.0);
+			v_texCoord = a_texCoord + u_center;
+			v_center = u_center;
+
+			float invAspect = 1.0/u_aspect;
+			v_pos.x *= invAspect;
+			v_offset.x *= invAspect;
+		}
+		</script>
+
+
+		<script id="fragSwirl" type="x-shader/x-fragment">
+		precision mediump float;
+
+		uniform sampler2D u_image;
+		uniform float u_invRadius;
+
+		varying vec2 v_texCoord;
+		varying vec3 v_pos;
+		varying vec2 v_center;
+		varying vec2 v_offset;
+
+		void main() {
+
+			float progress = distance( v_pos.xy, v_offset.xy) * u_invRadius;
+			
+			float angle = 1.0 - progress * progress;
+			float rotatedX = cos(angle) * (v_texCoord.x - v_center.x) - sin(angle) * (v_texCoord.y - v_center.y) + v_center.x;
+			float rotatedY = sin(angle) * (v_texCoord.x - v_center.x) + cos(angle) * (v_texCoord.y - v_center.y) + v_center.y;
+
+			vec2 rotatedPos = vec2(rotatedX,rotatedY); 
+
+			gl_FragColor =  texture2D(u_image, rotatedPos);
+		}
+		</script>
+
+
+		<canvas width = "1024" height = "512" id = "canvas"></canvas>
+
+      	<script>
+
+		let canvas = document.getElementById('canvas');
+		gl = canvas.getContext('experimental-webgl');
+
+		let vertText = document.getElementById("vert").text;
+		let fragText = document.getElementById("frag").text;
+
+		let vertSwirlText = document.getElementById("vertSwirl").text;
+		let fragSwirlText = document.getElementById("fragSwirl").text;
+
+		let vertShader = gl.createShader(gl.VERTEX_SHADER);
+		gl.shaderSource(vertShader, vertText);
+		gl.compileShader(vertShader);
+
+		let fragShader = gl.createShader(gl.FRAGMENT_SHADER);
+		gl.shaderSource(fragShader, fragText);
+		gl.compileShader(fragShader);
+
+		let vertSwirlShader = gl.createShader(gl.VERTEX_SHADER);
+		gl.shaderSource(vertSwirlShader, vertSwirlText);
+		gl.compileShader(vertSwirlShader);
+
+		let fragSwirlShader = gl.createShader(gl.FRAGMENT_SHADER);
+		gl.shaderSource(fragSwirlShader, fragSwirlText);
+		gl.compileShader(fragSwirlShader);
+
+
+
+		let shaderProgram = gl.createProgram();
+
+		gl.attachShader(shaderProgram, vertShader);
+		gl.attachShader(shaderProgram, fragShader);
+		gl.linkProgram(shaderProgram);
+		gl.useProgram(shaderProgram);
+
+		let attrTexCoord = gl.getAttribLocation(shaderProgram, "a_texCoord");
+		let attrPosition = gl.getAttribLocation(shaderProgram, "a_position");
+		let uniformSampler = gl.getUniformLocation(shaderProgram, "u_image");
+
+
+
+		let shaderSwirlProgram = gl.createProgram();
+
+		gl.attachShader(shaderSwirlProgram, vertSwirlShader);
+		gl.attachShader(shaderSwirlProgram, fragSwirlShader);
+		gl.linkProgram(shaderSwirlProgram);
+		gl.useProgram(shaderSwirlProgram);
+
+		let attrSwirlTexCoord = gl.getAttribLocation(shaderSwirlProgram, "a_texCoord");
+		let attrSwirlPosition = gl.getAttribLocation(shaderSwirlProgram, "a_position");
+		let uniformSwirlSampler = gl.getUniformLocation(shaderSwirlProgram, "u_image");
+		let uniformSwirlOffset = gl.getUniformLocation(shaderSwirlProgram,"u_offset");
+		let uniformSwirlAspect = gl.getUniformLocation(shaderSwirlProgram,"u_aspect");
+		let uniformSwirlCenter = gl.getUniformLocation(shaderSwirlProgram,"u_center");
+		let uniformSwirlInverseRadius = gl.getUniformLocation(shaderSwirlProgram,"u_invRadius");
+
+		let quadZ = 0.0;
+		let quadVertices = [
+		   -1.0, 1.0, quadZ,
+		   -1.0,-1.0, quadZ,
+		    1.0,-1.0, quadZ,
+		    1.0, 1.0, quadZ 
+		];
+		 
+		let quadIndices = [3,2,1, 3,1,0];
+
+		let quadTexCoord = [
+			0.0,  0.0,
+			0.0,  1.0,
+			1.0,  1.0,
+			1.0,  0.0,
+		];
+
+		let vertexBuffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(quadVertices), gl.STATIC_DRAW);
+		gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+		let indexBuffer = gl.createBuffer();
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(quadIndices), gl.STATIC_DRAW);
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+
+		let textureBuffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, textureBuffer);
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(quadTexCoord), gl.STATIC_DRAW);
+		gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+
+
+		let numSlices = 30;
+		let circleRadius = 0.25;
+		let invRadius = 1.0/circleRadius;
+		let aspect = canvas.height/canvas.width;
+
+		function getCircleVertices(){
+			
+			let step = (2.0*Math.PI)/numSlices;
+			let vertices = [];
+			let z = 0.0;
+			vertices.push(0.0);
+			vertices.push(0.0);
+			vertices.push(z);
+
+			for(let i=0;i <= numSlices; ++i){
+				let angle = i*step;
+				vertices.push(circleRadius * Math.cos(angle));
+				vertices.push(circleRadius * Math.sin(angle));
+				vertices.push(z);
+			}
+			return vertices;
+		}
+
+		function getCircleIndices(){
+			let indices = [];
+			indices.push(0);
+			for(let i=0;i <= numSlices; ++i){
+				indices.push(i+1);
+			}
+
+			return indices;
+		}
+
+		function getCircleTexCoords(){
+
+			let step = (2.0*Math.PI)/numSlices;
+			let texCoords = [];
+			texCoords.push(0.0);
+			texCoords.push(0.0);
+
+			for(let i=0;i<=numSlices;++i){
+				let angle = i*step;
+
+				//texCoords.push( (0.5 * circleRadius * Math.cos(angle) + 0.5) );
+				//texCoords.push( (-0.5 - 0.5 * circleRadius* Math.sin(angle)) );
+
+				texCoords.push( 0.5 * aspect * circleRadius * Math.cos(angle) );
+				texCoords.push( -0.5 * circleRadius * Math.sin(angle)   );
+				
+			}
+
+			return texCoords;
+		}
+
+
+		let circleVertices = getCircleVertices();
+		let circleIndices = getCircleIndices();
+		let circleTexCoords = getCircleTexCoords();
+
+
+		let swirlVertexBuffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, swirlVertexBuffer);
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(circleVertices), gl.STATIC_DRAW);
+		gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+		let swirlIndexBuffer = gl.createBuffer();
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, swirlIndexBuffer);
+		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(circleIndices), gl.STATIC_DRAW);
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+
+		let swirlTextureBuffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, swirlTextureBuffer);
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(circleTexCoords), gl.STATIC_DRAW);
+		gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+
+
+		let mouseX = 0.0;
+		let mouseY = 0.0;
+		let mouseU = 0.0;
+		let mouseV = 0.0;
+
+		let doubleInverseWidth = 2.0/canvas.width;
+		let doubleInverseHeight = 2.0/canvas.height;
+
+		let quadTexture;
+
+		function initTextures() {
+		  quadTexture = gl.createTexture();
+		  quadImage = new Image();
+		  quadImage.onload = function() { handleTextureLoaded(quadImage, quadTexture); }
+		  quadImage.src = "swirl/vietnam.jpg";
+		}
+
+		function handleTextureLoaded(image, texture) {
+		  gl.bindTexture(gl.TEXTURE_2D, texture);
+		  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+		  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+		  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+		  gl.generateMipmap(gl.TEXTURE_2D);
+		  gl.bindTexture(gl.TEXTURE_2D, null);
+		}
+
+		function draw(){
+
+			gl.useProgram(shaderSwirlProgram);
+
+			gl.bindBuffer(gl.ARRAY_BUFFER, swirlVertexBuffer);
+			gl.vertexAttribPointer(attrSwirlPosition, 3, gl.FLOAT, false, 0, 0);
+			gl.enableVertexAttribArray(attrSwirlPosition);
+
+			gl.bindBuffer(gl.ARRAY_BUFFER, swirlTextureBuffer);
+			gl.vertexAttribPointer(attrSwirlTexCoord, 2, gl.FLOAT, false, 0, 0);
+			gl.enableVertexAttribArray(attrSwirlTexCoord);
+
+			gl.activeTexture(gl.TEXTURE0);
+			gl.bindTexture(gl.TEXTURE_2D, quadTexture);
+
+			gl.uniform1i(uniformSwirlSampler, 0);
+			gl.uniform2f(uniformSwirlOffset, mouseX, mouseY);
+			gl.uniform2f(uniformSwirlCenter, mouseU, mouseV);
+			gl.uniform1f(uniformSwirlAspect, aspect);
+			gl.uniform1f(uniformSwirlInverseRadius, invRadius);
+
+			gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, swirlIndexBuffer);
+
+			gl.drawElements(gl.TRIANGLE_FAN, circleIndices.length, gl.UNSIGNED_SHORT,0);
+
+
+
+			gl.useProgram(shaderProgram);
+
+			gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+			gl.vertexAttribPointer(attrPosition, 3, gl.FLOAT, false, 0, 0);
+			gl.enableVertexAttribArray(attrPosition);
+
+			gl.bindBuffer(gl.ARRAY_BUFFER, textureBuffer);
+			gl.vertexAttribPointer(attrTexCoord, 2, gl.FLOAT, false, 0, 0);
+			gl.enableVertexAttribArray(attrTexCoord);
+
+			gl.activeTexture(gl.TEXTURE0);
+			gl.bindTexture(gl.TEXTURE_2D, quadTexture);
+
+			gl.uniform1i(uniformSampler, 0);
+
+			gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+
+			gl.drawElements(gl.TRIANGLES, quadIndices.length, gl.UNSIGNED_SHORT,0);
+		}
+
+		
+
+
+		initTextures();
+
+
+		gl.clearColor(0.5, 0.5, 0.5, 1.0);
+
+		gl.enable(gl.DEPTH_TEST);
+
+		gl.clear(gl.COLOR_BUFFER_BIT);
+
+		gl.viewport(0, 0, canvas.width, canvas.height);
+
+
+		canvas.addEventListener("mousemove", function(e){
+			mouseX = e.clientX * doubleInverseWidth - 1;
+			mouseY = 1 - e.clientY * doubleInverseHeight;
+			mouseU =  0.5 * mouseX + 0.5;
+			mouseV = -0.5 * mouseY - 0.5;
+
+			draw();
+		});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		</script>
+	</body>
+</html>

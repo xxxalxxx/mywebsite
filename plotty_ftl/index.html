@@ -1,0 +1,257 @@
+<!doctype html>
+<html>
+   <body>
+      <canvas width = "800" height = "600" id = "my_Canvas"></canvas>
+
+      <script>
+
+function readTextFile(file,out)
+{
+    var rawFile = new XMLHttpRequest();
+    rawFile.open("GET", file, false);
+    rawFile.onreadystatechange = function ()
+    {
+        if(rawFile.readyState === 4)
+        {
+            if(rawFile.status === 200 || rawFile.status == 0)
+            {
+                out.text = rawFile.responseText;
+            }
+        }
+    }
+    rawFile.send(null);
+}
+
+
+/*============ Creating a canvas =================*/
+
+var canvas = document.getElementById('my_Canvas');
+gl = canvas.getContext('experimental-webgl');
+let dx = 0.0;
+let dy = 0.0;
+let gl_dx = 0.00125;
+
+let x0 = 0.0;
+let y0 = 0.0;
+
+let gl_offset_x = 0.0;
+let gl_offset_y = 0.0;
+
+let dragged = false;
+
+let double_inverse_width = 2.0/canvas.width;
+let double_inverse_height = 2.0/canvas.height;
+
+
+let aspect = canvas.width/canvas.height;
+let scale = 1.0;
+
+canvas.addEventListener("mousedown", function(e)
+{
+   dragged = true;
+
+   dx = e.clientX - x0;
+   dy = e.clientY - y0;   
+
+});   
+
+
+
+// update canvas on drag
+canvas.addEventListener("mousemove",function(e)
+{   
+   if(dragged)
+   {
+      x0 = e.clientX - dx;
+      y0 = e.clientY - dy;
+      gl_offset_x = double_inverse_width * x0 - 1.0;
+      gl_offset_y = -double_inverse_height * y0 + 1.0;
+      draw();  
+      console.log(gl_offset_x+ ' ' + gl_offset_y);
+   }
+
+  
+});
+
+canvas.addEventListener("mouseup", function(e){
+   dragged = false;
+});
+
+
+canvas.addEventListener("mouseleave", function(e){
+   dragged = false;
+});
+
+function scaleGraph(e)
+{
+   let evt=window.event || e //equalize event object
+   let delta=evt.detail? evt.detail*(-120) : evt.wheelDelta //delta returns +120 when wheel is scrolled up, -120 when scrolled down
+   if(delta<=-120)
+   {
+      scale*=0.9;
+   }
+   else
+   {
+      scale*=1.1;
+   }
+
+   console.log('scaling');
+
+   draw();
+
+}
+
+var mousewheelevt=(/Firefox/i.test(navigator.userAgent))? "DOMMouseScroll" : "mousewheel" //FF doesn't recognize mousewheel as of FF3.x
+
+if (canvas.attachEvent) //if IE (and Opera depending on user setting)
+   canvas.attachEvent("on"+mousewheelevt, scaleGraph);
+
+else if (canvas.addEventListener) //WC3 browsers
+   canvas.addEventListener(mousewheelevt, scaleGraph, false);
+
+
+
+/*========== Defining and storing the geometry =========*/
+
+var vertices = [
+   -1.0, 1.0, 0.0,
+   -1.0,-1.0, 0.0,
+    1.0,-1.0, 0.0,
+    1.0, 1.0, 0.0 
+];
+ 
+indices = [3,2,1, 3,1,0];
+
+// Create an empty buffer object to store vertex buffer
+var vertex_buffer = gl.createBuffer();
+
+// Bind appropriate array buffer to it
+gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
+
+// Pass the vertex data to the buffer
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+// Unbind the buffer
+gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+// Create an empty buffer object to store Index buffer
+var Index_Buffer = gl.createBuffer();
+
+// Bind appropriate array buffer to it
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Index_Buffer);
+
+// Pass the vertex data to the buffer
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+// Unbind the buffer
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+
+/*====================== Shaders =======================*/
+
+// Vertex shader source code
+
+
+var vert = {};
+readTextFile('plotty_ftl/plotty.vert',vert);
+
+var frag = {};
+readTextFile('plotty_ftl/plotty.frag',frag);
+
+console.log(vert);
+console.log(frag);
+
+var vertCode = vert.text;
+
+// Create a vertex shader object
+var vertShader = gl.createShader(gl.VERTEX_SHADER);
+gl.shaderSource(vertShader, vertCode);
+gl.compileShader(vertShader);
+
+var fragCode = frag.text;
+var fragShader = gl.createShader(gl.FRAGMENT_SHADER);
+gl.shaderSource(fragShader, fragCode);
+gl.compileShader(fragShader);
+
+// Create a shader program object to
+// store the combined shader program
+var shaderProgram = gl.createProgram();
+
+gl.attachShader(shaderProgram, vertShader);
+gl.attachShader(shaderProgram, fragShader);
+
+// Link both the programs
+gl.linkProgram(shaderProgram);
+
+// Use the combined shader program object
+gl.useProgram(shaderProgram);
+
+
+
+/* ======= Associating shaders to buffer objects =======*/
+
+// Bind vertex buffer object
+gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
+
+// Bind index buffer object
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Index_Buffer); 
+
+// Get the attribute location
+var coord = gl.getAttribLocation(shaderProgram, "coordinates");
+
+// Point an attribute to the currently bound VBO
+gl.vertexAttribPointer(coord, 3, gl.FLOAT, false, 0, 0);
+gl.enableVertexAttribArray(coord);
+
+let handle = {};
+
+handle.offset = gl.getUniformLocation(shaderProgram, "offset");
+handle.aspect = gl.getUniformLocation(shaderProgram, "aspect");
+handle.scale  = gl.getUniformLocation(shaderProgram, "scale");
+handle.dx     = gl.getUniformLocation(shaderProgram, "dx");
+
+/*============= Drawing the Quad ================*/
+
+// Clear the canvas
+gl.clearColor(0.5, 0.5, 0.5, 1.0);
+
+// Enable the depth test
+gl.enable(gl.DEPTH_TEST);
+
+// Clear the color buffer bit
+gl.clear(gl.COLOR_BUFFER_BIT);
+
+// Set the view port
+gl.viewport(0, 0, canvas.width, canvas.height);
+
+gl.uniform2f( handle.offset, gl_offset_x , gl_offset_y);
+gl.uniform1f( handle.aspect , aspect);
+gl.uniform1f( handle.scale , scale);
+gl.uniform1f( handle.dx, gl_dx);
+// Draw the triangle
+gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT,0);
+
+function draw()
+{
+
+  // gl.useProgram(shaderProgram);
+
+   gl.uniform2f(handle.offset, gl_offset_x , gl_offset_y);
+   gl.uniform1f( handle.scale, scale);
+   gl.uniform1f( handle.dx, gl_dx);
+
+ //  gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
+  // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Index_Buffer); 
+
+ //  gl.vertexAttribPointer(coord, 3, gl.FLOAT, false, 0, 0);
+ //  gl.enableVertexAttribArray(coord);
+
+   gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT,0);
+
+ //  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+ //  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null); 
+}
+
+
+      </script>
+   </body>
+</html>
